@@ -1,0 +1,21 @@
+{{- if .Values.db.initJob.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-db-script
+  annotations:
+    "helm.sh/hook": "post-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+    "helm.sh/hook-weight": "0"
+data:
+  init-db-script.sql: |
+    CREATE TABLE restaurants (
+        name        char(30),
+        count       integer,
+        PRIMARY KEY (name)
+    );
+    INSERT INTO restaurants (name, count) VALUES ('zapote', 0);
+    INSERT INTO restaurants (name, count) VALUES ('gueggeli', 0);
+    INSERT INTO restaurants (name, count) VALUES ('dieci', 0);
+    INSERT INTO restaurants (name, count) VALUES ('burgermeister', 0);
+{{- end }}

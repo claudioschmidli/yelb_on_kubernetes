@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yelb-ui-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-nginx # Link to the ClusterIssuer, see https://gitlab.fhnw.ch/cas-data-engineering-hs24/containerization/-/blob/main/labs/Day_2_Operations.md#tls-certificate-handling
+spec:
+  ingressClassName: nginx
+  tls: 
+    - secretName: yelb-secret-tls  # Name the Kubernetes Secret for the TLS certificate
+      hosts:
+        - yelb-project-participant17.fhnw.0x707363.ch 
+  rules:
+    - host: yelb-project-participant17.fhnw.0x707363.ch
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: 
+                name: yelb-ui
+                port: 
+                  number: 80

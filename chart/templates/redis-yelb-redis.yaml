@@ -1,0 +1,10 @@
+{{- if .Values.cache.enabled -}}
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: Redis
+metadata:
+  name: {{ template "yelb.name" . }}-redis
+spec:
+  kubernetesConfig:
+    image: "{{ .Values.cache.image.repository }}:{{ .Values.cache.image.tag }}"
+    imagePullPolicy: {{ .Values.cache.image.imagePullPolicy }}
+{{- end }}

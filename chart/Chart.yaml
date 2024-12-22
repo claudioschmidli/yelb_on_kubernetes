@@ -1,0 +1,12 @@
+apiVersion: v2
+name: yelb
+version: 0.0.1
+appVersion: 0.0.1
+description: Yelb! The only hub for healthy food recommendations
+# TODO: Ensure this chart can only be installed on Kubernetes 1.22 and newer (required because of the chosen Ingress resource apiVersion).
+kubeVersion: ">=1.22.0" # Kubernetes version constraint
+sources:
+- https://github.com/PhilipSchmid/containerization
+type: application
+maintainers:
+- name: PhilipSchmid

@@ -1,0 +1,15 @@
+{{- if .Values.cache.enabled -}}
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: {{ template "yelb.name" . }}-postgres
+spec:
+  teamId: {{ template "yelb.name" . }}
+  volume:
+    size: {{ .Values.db.persistence.requestSize }}
+  numberOfInstances: {{ .Values.db.numberOfInstances }}
+{{- include "yelb.postgresql.users" . | nindent 2 }}
+{{- include "yelb.postgresql.databases" . | nindent 2 }}
+  postgresql:
+    version: "14"
+{{- end }}

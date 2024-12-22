@@ -1,0 +1,112 @@
+# Default values for yelb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Overrides for generated resource names
+# See templates/_helpers.tpl
+nameOverride: ""
+fullnameOverride: ""
+
+## Labels to apply to all resources
+##
+commonLabels: {}
+# foo: bar
+
+cache:
+  enabled: true
+  image:
+    repository: quay.io/opstree/redis
+    tag: v7.0.12
+    imagePullPolicy: Always
+
+db:
+  enabled: true
+  persistence:
+    requestSize: 1Gi
+  numberOfInstances: 1
+  initJob:
+    enabled: true
+    image: docker.io/bitnami/postgresql
+    tag: 14.13.0
+
+backend:
+  replicaCount: 1
+  image:
+    # TODO: Configure your own yelb-appserver image here by pointing to the regarding image repository on the FHNW GitLab registry.
+    repository: cr.gitlab.fhnw.ch/claudio.schmidli/yelb-appserver-claudio-schmidli
+    tag: latest
+    imagePullPolicy: Always
+    imagePullSecrets:
+    - name: fhnw-gitlab-cr
+  service:
+    type: ClusterIP
+    port: 4567
+    # type: LoadBalancer
+
+    # type: NodePort
+    # nodePorts: 32080
+  extraEnvs: []
+  # extraEnvs:
+  #   - name: foo
+  #     value: bar
+  configuration:
+    # Backend local configuration
+    rackEnv: custom
+    backendPort: 4567
+    # Redis configuration
+    redisServerEndpoint: yelb-redis
+    redisServerPort: 6379
+    # DB (postgres) configuration
+    dbServerEndpoint: yelb-postgres
+    dbServerPort: 5432
+    dbName: yelb
+    dbUserSecret: yelb-user.yelb-postgres.credentials.postgresql.acid.zalan.do
+    dbUserSecretUsernameKey: username
+    dbUserSecretPasswordKey: password
+  resources:
+    limits:
+      cpu: 1
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: pschmid/yelb-ui
+    tag: latest
+    imagePullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 80
+    # type: LoadBalancer
+
+    # type: NodePort
+    # nodePorts: 32080
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-nginx
+    path: "/"
+    pathType: Prefix
+    # TODO: Specify the proper URL for your assigned namespace "yelb-project-participantX.fhnw.0x707363.ch".
+    hosts:
+    - yelb-project-participant17.fhnw.0x707363.ch
+    tls:
+    # TODO: Specify the proper URL for your assigned namespace "yelb-project-participantX.fhnw.0x707363.ch".
+    - hosts:
+      - yelb-project-participant17.fhnw.0x707363.ch
+      secretName: yelb-secret-tls
+  extraEnvs: []
+  # extraEnvs:
+  #   - name: foo
+  #     value: bar
+  resources:
+    limits:
+      cpu: 1
+      memory: 64Mi
+    requests:
+      cpu: 5m
+      memory: 16Mi

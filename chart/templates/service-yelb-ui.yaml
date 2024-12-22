@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "yelb.name" . }}-ui
+  labels:
+    app: {{ template "yelb.name" . }}
+    tier: frontend
+    {{- include "yelb.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+  {{- $setNodePorts := (or (eq .Values.frontend.service.type "NodePort") (eq .Values.frontend.service.type "LoadBalancer")) }}
+  - port: {{ .Values.frontend.service.port }}
+    protocol: TCP
+    targetPort: {{ .Values.frontend.service.port }}
+    name: http
+    {{- if (and $setNodePorts (not (empty .Values.frontend.service.nodePorts))) }}
+    nodePort: {{ .Values.frontend.service.nodePorts.http }}
+    {{- end }}
+  selector:
+    app: {{ template "yelb.name" . }}
+    tier: frontend

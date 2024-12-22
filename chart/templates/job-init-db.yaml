@@ -1,0 +1,53 @@
+{{- if .Values.db.initJob.enabled -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-db
+  annotations:
+    "helm.sh/hook": "post-install"
+    "helm.sh/hook-delete-policy": "hook-succeeded"
+    "helm.sh/hook-weight": "1"
+spec:
+  template:
+    metadata:
+      name:  init-db
+      labels:
+        app: init-postgresdb
+    spec:
+      containers:
+      - image: "{{ .Values.db.initJob.image }}:{{ .Values.db.initJob.tag }}"
+        name: init-db
+        command:
+        - bash
+        - -eo
+        - pipefail
+        - -c
+        - >
+          echo "Initializing yelb database with default schema.";
+          echo "Waiting 60 seconds for postgres DB instance to come up.";
+          sleep 60;
+          PGPASSWORD=${POSTGRES_DB_PASSWORD} psql -h ${POSTGRES_HOST} -d ${POSTGRES_DB} -U ${POSTGRES_DB_USER} -f /init/init-db-script.sql && echo "DB initialization run successful";
+        volumeMounts:
+        - name: init-db-script
+          mountPath: /init
+        env:
+          - name: POSTGRES_HOST
+            value: {{ template "yelb.name" . }}-postgres
+          - name: POSTGRES_DB
+            value: {{ template "yelb.name" . }}
+          - name: POSTGRES_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: "{{ include "yelb.postgresql.user" . }}.{{ template "yelb.name" . }}-postgres.credentials.postgresql.acid.zalan.do"
+                key: username
+          - name: POSTGRES_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "{{ include "yelb.postgresql.user" . }}.{{ template "yelb.name" . }}-postgres.credentials.postgresql.acid.zalan.do"
+                key: password
+      volumes:
+        - name: init-db-script
+          configMap:
+            name: init-db-script
+      restartPolicy: OnFailure
+{{- end }}

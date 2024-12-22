@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "yelb.name" . }}-ui
+  labels:
+    app: {{ template "yelb.name" . }}-ui
+    {{- include "yelb.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "yelb.name" . }}
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: {{ template "yelb.name" . }}
+        tier: frontend
+    spec:
+      containers:
+      - name: yelb-ui
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.frontend.service.port }}
+        env:
+        - name: YELB_BACKEND_SERVER_ADDRESS
+          value: {{ template "yelb.name" . }}-appserver
+        - name: YELB_BACKEND_SERVER_PORT
+          value: {{ .Values.backend.configuration.backendPort | quote }}
+        # TODO: Consider the container resource limits/requests, if they are configured in the values.yaml file.
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}

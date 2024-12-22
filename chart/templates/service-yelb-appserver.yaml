@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "yelb.name" . }}-appserver
+  labels:
+    app: {{ template "yelb.name" . }}
+    tier: backend
+    {{- include "yelb.labels" . | nindent 4 }}
+spec:
+  # TODO: Define the full yelb-appserver service spec by having a look at the already templated service-yelb-ui.yaml file.
+  type: {{ .Values.backend.service.type }}
+  ports:
+  {{- $setNodePorts := (or (eq .Values.backend.service.type "NodePort") (eq .Values.backend.service.type "LoadBalancer")) }}
+  - port: {{ .Values.backend.service.port }}
+    protocol: TCP
+    targetPort: {{ .Values.backend.service.port }}
+    name: http
+    {{- if (and $setNodePorts (not (empty .Values.backend.service.nodePorts))) }}
+    nodePort: {{ .Values.backend.service.nodePorts.http }}
+    {{- end }}
+  selector:
+    app: {{ template "yelb.name" . }}-appserver #correction claudio
+    tier: backend

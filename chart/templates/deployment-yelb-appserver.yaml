@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "yelb.name" . }}-appserver
+  labels:
+    app: {{ template "yelb.name" . }}-appserver
+    {{- include "yelb.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    # TODO: Labels on the pods to "assign" them to this Deployment (it's ReplicaSet, to be more precise). Generate the label values where possible.
+     matchLabels:
+      app: {{ template "yelb.name" . }}-appserver # Assign the pods to this Deployment
+      tier: backend # additional label added for better categorization
+      #End To do
+  template:
+    # TODO: Metadata to be added on the pods. Generate the label values where possible.
+    metadata:
+      labels:
+        app: yelb-appserver
+        tier: backend
+        #End To do
+    spec:
+      {{- with .Values.backend.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      containers:
+      - name: {{ template "yelb.name" . }}-appserver
+        # TODO: Parse the image value by combining .Values.backend.image.* values (syntax: image:tag).
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        # TODO: Apply the chosen imagePullPolicy from the values file.
+        imagePullPolicy: {{ .Values.backend.image.imagePullPolicy }}
+        # TODO: Specify a containerPort and assign it the value from values.yaml.
+        ports:
+        - containerPort: {{ .Values.backend.configuration.backendPort }}
+        env:
+        - name: "RACK_ENV"
+          value: "custom"
+        - name: BACKEND_PORT
+          # TODO: On which port should be yelb-appserver backend be running. Use the integer value from values.yaml - don't forget to quote it.
+          value: "{{ .Values.backend.configuration.backendPort }}"
+        - name: REDIS_SERVER_ENDPOINT
+          # TODO: How can the backend connect to Redis?
+          value: "{{ .Values.backend.configuration.redisServerEndpoint}}"
+        - name: REDIS_SERVER_PORT
+          # TODO: How can the backend connect to Redis?
+          value: "{{ .Values.backend.configuration.redisServerPort}}"
+        - name: POSTGRES_DB_SERVER_ENDPOINT
+          # TODO: How can the backend connect to the DB?
+          value: "{{ .Values.backend.configuration.dbServerEndpoint}}"
+        - name: POSTGRES_DB_SERVER_PORT
+          # TODO: How can the backend connect to the DB?
+          value: "{{ .Values.backend.configuration.dbServerPort}}"
+        - name: POSTGRES_DB_NAME
+          value: "{{ .Values.backend.configuration.dbName}}"
+        - name: POSTGRES_DB_USER
+          valueFrom:
+            secretKeyRef:
+              # TODO: Refer to the dbUserSecret and dbUserSecretUsernameKey values.
+              name: "{{ .Values.backend.configuration.dbUserSecret}}"
+              key:  "{{ .Values.backend.configuration.dbUserSecretUsernameKey}}"
+        - name: POSTGRES_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              # TODO: Refer to the dbUserSecret and dbUserSecretPasswordKey values.
+              name: "{{ .Values.backend.configuration.dbUserSecret}}"
+              key:  "{{ .Values.backend.configuration.dbUserSecretPasswordKey}}"
+        {{- if .Values.backend.resources }}
+        resources: {{ toYaml .Values.backend.resources | nindent 10 }}
+        {{- end }}

@@ -1,0 +1,228 @@
+# TODO: Don't change anything in the "yelb-redis" and "yelb-postgres" resource. However, apply them early in the process, as you will then be able to find information such as used ports and secret names for the further TODOs of other resources.
+---
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: Redis
+metadata:
+  name: yelb-redis
+spec:
+  kubernetesConfig:
+    image: quay.io/opstree/redis:v7.0.12
+---
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: yelb-postgres
+spec:
+  teamId: yelb
+  volume:
+    size: 1Gi
+  numberOfInstances: 1
+  users:
+    yelb-user:
+    - superuser
+    - createdb
+  databases:
+    yelb: yelb-user
+  postgresql:
+    version: "14"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yelb-appserver
+spec:
+  replicas: 1
+  selector:
+    # TODO: Labels on the pods to "assign" them to this Deployment (it's ReplicaSet, to be more precise)
+    matchLabels:
+      app: yelb-appserver # Assign the pods to this Deployment
+      tier: backend # additional label added for better categorization
+      #End To do
+  template:
+    # TODO: Metadata to be added on the pods
+    metadata:
+      labels:
+        app: yelb-appserver
+        tier: backend
+        #End To do
+    spec:
+      imagePullSecrets:
+      - name: fhnw-gitlab-cr
+      containers:
+      # TODO: Container Array item with name, image, imagePullPolicy and containerPort
+      - name: yelb-appserver
+        image: cr.gitlab.fhnw.ch/claudio.schmidli/yelb-appserver-claudio-schmidli:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4567
+        env:
+        - name: RACK_ENV
+          value: custom
+        - name: BACKEND_PORT
+          value: "4567"
+        - name: REDIS_SERVER_ENDPOINT
+          #CLS: yelb-redis is the service name. So I added this
+          #CLS: I checked this port by applying  kubectl apply -f yelb-redis_and_postgres_testing.yaml and kubectl get svc
+          value: yelb-redis # TODO: How can the backend connect to Redis?
+        - name: REDIS_SERVER_PORT
+          #CLS: I checked this port by applying  kubectl apply -f yelb-redis_and_postgres_testing.yaml and kubectl get svc
+          value: "6379" # TODO: How can the backend connect to Redis?
+        - name: POSTGRES_DB_SERVER_ENDPOINT
+          #CLS: yelb-postgres is the service name. So I added this
+          #CLS: I checked this port by applying  kubectl apply -f yelb-redis_and_postgres_testing.yaml and kubectl get svc
+          value: yelb-postgres # TODO: How can the backend connect to the DB?
+        - name: POSTGRES_DB_SERVER_PORT
+          #CLS: I checked this port by applying  kubectl apply -f yelb-redis_and_postgres_testing.yaml and kubectl get svc
+          value: "5432" # TODO: How can the backend connect to the DB?
+        - name: POSTGRES_DB_NAME
+          value: yelb
+        - name: POSTGRES_DB_USER
+          valueFrom:
+            secretKeyRef:
+              #CLS: kubectl get secrets
+              #CLS: Use the one for the "yelb-user" service user!
+              #CLS: kubectl get secret yelb-user.yelb-postgres.credentials.postgresql.acid.zalan.do -o yaml
+              #CLS: find keys for user and password 
+              name: yelb-user.yelb-postgres.credentials.postgresql.acid.zalan.do # TODO: Name of the automatically created Zalanto postgres instance Kubernetes Secret. Use the one for the "yelb-user" service user!
+              key: username # TODO: User YAML key inside the automatically created Zalanto postgres instance Kubernetes Secret. "kubectl get secret -o yaml yelb-user...."
+        - name: POSTGRES_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              #CLS: See comments above
+              name: yelb-user.yelb-postgres.credentials.postgresql.acid.zalan.do # TODO: Name of the automatically created Zalanto postgres instance Kubernetes Secret. Use the one for the "yelb-user" service user!
+              key: password
+---
+#CLS here we create the yelb-appserver service
+apiVersion: v1
+kind: Service
+metadata:
+  name: yelb-appserver
+  labels:
+# TODO: Full ClusterIP service spec.
+    app: yelb 
+    tier: backend 
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4567 
+    targetPort: 4567 #yelp-appserver backend port see line 57
+    protocol: TCP
+  selector:
+    app: yelb-appserver #label of the development, see line 45
+    tier: backend #label of the development, see line 46
+# END to do
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yelb-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yelb-ui
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: yelb-ui
+        tier: frontend
+    spec:
+      containers:
+      - name: yelb-ui
+        image: pschmid/yelb-ui:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: YELB_BACKEND_SERVER_ADDRESS
+          #CLS: see line 94
+          value: yelb-appserver  # TODO: Yelb backend Kubernetes service
+        - name: YELB_BACKEND_SERVER_PORT
+          #CLS: see line 102
+          value: "4567" # TODO: ...
+---
+#CLS here we create the yelb-ui Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: yelb-ui
+  labels:
+    app: yelb
+    tier: frontend
+spec:
+  type: ClusterIP
+  ports:
+# TODO: The port on which the frontend is running.
+  - port: 80
+    targetPort: 80 # see line 131
+    protocol: TCP
+  selector:
+# TODO: Labels present on the frondend pods.
+    app: yelb-ui # see line 118
+    tier: frontend # see line 119
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-db-script
+data:
+  init-db-script.sql: |
+    CREATE TABLE restaurants (
+        name        char(30),
+        count       integer,
+        PRIMARY KEY (name)
+    );
+    INSERT INTO restaurants (name, count) VALUES ('zapote', 0);
+    INSERT INTO restaurants (name, count) VALUES ('gueggeli', 0);
+    INSERT INTO restaurants (name, count) VALUES ('dieci', 0);
+    INSERT INTO restaurants (name, count) VALUES ('burgermeister', 0);
+---
+#Create Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-db
+spec:
+  template:
+    metadata:
+      name:  init-db
+      labels:
+        app: init-postgresdb
+    spec:
+      containers:
+      - image: docker.io/bitnami/postgresql:14.5.0
+        name: init-db
+        command:
+        - bash
+        - -eo
+        - pipefail
+        - -c
+        - >
+          echo "Initializing yelb database with default schema.";
+          echo "Waiting 60 seconds for postgres DB instance to come up.";
+          sleep 60;
+          PGPASSWORD=${POSTGRES_DB_PASSWORD} psql -h ${POSTGRES_HOST} -d ${POSTGRES_DB} -U ${POSTGRES_DB_USER} -f /init/init-db-script.sql && echo "DB initialization run successful";
+        volumeMounts:
+        - name: init-db-script
+          mountPath: /init
+        env:
+          - name: POSTGRES_HOST
+            value: yelb-postgres
+          - name: POSTGRES_DB
+            value: yelb
+          - name: POSTGRES_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name:  yelb-user.yelb-postgres.credentials.postgresql.acid.zalan.do # TODO: Name of the automatically created Zalanto postgres instance Kubernetes Secret. Use the one for the "yelb-user" service user!
+                key:  username # TODO: User YAML key inside the automatically created Zalanto postgres instance Kubernetes Secret. "kubectl get secret -o yaml yelb-user...."
+          - name: POSTGRES_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name:  yelb-user.yelb-postgres.credentials.postgresql.acid.zalan.do # TODO: Name of the automatically created Zalanto postgres instance Kubernetes Secret. Use the one for the "yelb-user" service user!
+                key: password
+      volumes:
+        - name: init-db-script
+          configMap:
+            name: init-db-script
+      restartPolicy: OnFailure
